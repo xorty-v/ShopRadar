@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopRadar.WebApi", "src\ShopRadar.WebApi\ShopRadar.WebApi.csproj", "{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopRadar.Domain", "src\ShopRadar.Domain\ShopRadar.Domain.csproj", "{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopRadar.Infrastructure", "src\ShopRadar.Infrastructure\ShopRadar.Infrastructure.csproj", "{46FD7658-E0DB-4CF7-83CA-FDE71CD19251}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopRadar.Parsers", "src\ShopRadar.Parsers\ShopRadar.Parsers.csproj", "{259D74BB-E131-469C-BBA4-1C762F6CF7F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopRadar.Application", "src\ShopRadar.Application\ShopRadar.Application.csproj", "{0768C6AF-175A-47B5-8459-6717ABCAD29F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46FD7658-E0DB-4CF7-83CA-FDE71CD19251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46FD7658-E0DB-4CF7-83CA-FDE71CD19251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46FD7658-E0DB-4CF7-83CA-FDE71CD19251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46FD7658-E0DB-4CF7-83CA-FDE71CD19251}.Release|Any CPU.Build.0 = Release|Any CPU
+		{259D74BB-E131-469C-BBA4-1C762F6CF7F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{259D74BB-E131-469C-BBA4-1C762F6CF7F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{259D74BB-E131-469C-BBA4-1C762F6CF7F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{259D74BB-E131-469C-BBA4-1C762F6CF7F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0768C6AF-175A-47B5-8459-6717ABCAD29F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0768C6AF-175A-47B5-8459-6717ABCAD29F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0768C6AF-175A-47B5-8459-6717ABCAD29F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0768C6AF-175A-47B5-8459-6717ABCAD29F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E024CC61-0EEA-451B-B7D6-7E8AC32F7DE3} = {CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}
+		{F9B6D250-F40B-4B22-9CE9-82593BEF6EC3} = {CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}
+		{46FD7658-E0DB-4CF7-83CA-FDE71CD19251} = {CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}
+		{259D74BB-E131-469C-BBA4-1C762F6CF7F1} = {CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}
+		{0768C6AF-175A-47B5-8459-6717ABCAD29F} = {CE3D3FA8-CA4C-4214-80A8-2EC0DA03655F}
+	EndGlobalSection
+EndGlobal
