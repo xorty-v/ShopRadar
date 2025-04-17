@@ -4,6 +4,7 @@ using ShopRadar.Domain.Products;
 using ShopRadar.Infrastructure;
 using ShopRadar.Parsers;
 using ShopRadar.Parsers.Abstractions;
+using ShopRadar.WebApi.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
@@ -11,9 +12,11 @@ var configuration = builder.Configuration;
 
 services.AddOpenApi();
 
-services.AddParsers();
-services.AddInfrastructure(configuration);
 services.AddApplication();
+services.AddInfrastructure(configuration);
+services.AddHostedService<ProxyRefreshService>();
+
+services.AddParsers();
 
 var app = builder.Build();
 
@@ -22,8 +25,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-
-// app.UseHttpsRedirection();
 
 app.MapGet("/test", async () => { return "Done!"; })
     .WithName("test");

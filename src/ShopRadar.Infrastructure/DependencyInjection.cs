@@ -2,8 +2,10 @@ using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ShopRadar.Domain.Products;
 using ShopRadar.Domain.Сategories;
+using ShopRadar.Infrastructure.Helpers;
 using ShopRadar.Infrastructure.PageFetchers;
 using ShopRadar.Infrastructure.Proxy;
 using ShopRadar.Infrastructure.Repositories;
@@ -31,10 +33,9 @@ public static class DependencyInjection
 
         services.AddScoped<IPageFetcher, HttpPageFetcher>();
 
-
         AddPersistence(services, configuration);
 
-        AddProxyRotator(services);
+        AddProxy(services, configuration);
 
         return services;
     }
@@ -51,8 +52,18 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
     }
 
-    private static void AddProxyRotator(IServiceCollection services)
+    private static void AddProxy(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IProxyProvider, ProxyProvider>();
+
+        services.Configure<ProxySettings>(configuration.GetSection("ProxySettings"));
+
+        services.AddHttpClient(HttpClientNames.WebshareClient, (serviceProvider, client) =>
+        {
+            var proxySettings = serviceProvider.GetRequiredService<IOptions<ProxySettings>>().Value;
+
+            client.BaseAddress = new Uri(proxySettings.BaseUrl);
+            client.DefaultRequestHeaders.Add("Authorization", proxySettings.ApiKey);
+        });
     }
 }

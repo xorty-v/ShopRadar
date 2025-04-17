@@ -12,16 +12,14 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4"/>
         <PackageReference Include="PuppeteerExtraSharp" Version="2.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\ShopRadar.Application\ShopRadar.Application.csproj"/>
         <ProjectReference Include="..\ShopRadar.Domain\ShopRadar.Domain.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Loaders\"/>
     </ItemGroup>
 
 </Project>

@@ -1,62 +1,54 @@
 using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ShopRadar.Infrastructure.Helpers;
 
 namespace ShopRadar.Infrastructure.Proxy;
 
 internal sealed class ProxyProvider : IProxyProvider
 {
-    private const string ProxyApiKey = "";
-    private const string GetProxiesUrl = "https://proxy.webshare.io/api/proxy/list/";
-    private static readonly HttpClient HttpClient = new HttpClient();
+    private readonly HttpClient _httpClient;
+    private readonly Lock _lock = new();
 
-    private Task _initialization;
-    private Random _rnd = new Random();
+    private int _currentIndex = -1;
+    private List<WebProxy> _webProxies = new();
 
-    private List<WebProxy> _webProxies = new List<WebProxy>();
-
-    public ProxyProvider()
+    public ProxyProvider(IHttpClientFactory httpClientFactory)
     {
-        _initialization = InitAsync();
+        _httpClient = httpClientFactory.CreateClient(HttpClientNames.WebshareClient);
     }
 
-    public async Task<WebProxy> GetProxyAsync()
+    public Task<WebProxy> GetProxyAsync()
     {
-        await _initialization;
+        WebProxy proxy;
 
-        int index = _rnd.Next(0, _webProxies.Count);
-
-        return _webProxies[index];
-    }
-
-    private async Task InitAsync()
-    {
-        var proxies = await GetWebProxies();
-        _webProxies.AddRange(proxies);
-    }
-
-    private async Task<List<Proxy>> GetProxies()
-    {
-        var proxies = new List<Proxy>();
-
-        HttpClient.DefaultRequestHeaders.Add("Authorization", ProxyApiKey);
-
-        var response = await HttpClient.GetAsync(GetProxiesUrl);
-
-        JObject json = JObject.Parse(await response.Content.ReadAsStringAsync());
-        List<Proxy>? deserializepProxies = JsonConvert.DeserializeObject<List<Proxy>>(json["results"]!.ToString());
-
-        if (deserializepProxies != null)
+        using (_lock.EnterScope())
         {
-            proxies.AddRange(deserializepProxies);
+            proxy = _webProxies[(_currentIndex + 1) % _webProxies.Count];
         }
 
-        return proxies;
+        return Task.FromResult(proxy);
     }
 
-    private async Task<List<WebProxy>> GetWebProxies()
+    public async Task RefreshProxiesAsync()
     {
-        var rawProxies = await GetProxies();
+        var proxies = await GetWebProxiesAsync();
+
+        using (_lock.EnterScope())
+        {
+            if (!proxies.Except(_webProxies).Any())
+            {
+                return;
+            }
+
+            _webProxies = proxies;
+            _currentIndex = -1;
+        }
+    }
+
+    private async Task<List<WebProxy>> GetWebProxiesAsync()
+    {
+        var rawProxies = await GetProxiesAsync();
 
         var proxies = rawProxies.Select(p => new WebProxy
         {
@@ -70,5 +62,22 @@ internal sealed class ProxyProvider : IProxyProvider
         });
 
         return proxies.ToList();
+    }
+
+    private async Task<List<Proxy>> GetProxiesAsync()
+    {
+        var proxies = new List<Proxy>();
+
+        var response = await _httpClient.GetAsync("proxy/list/");
+
+        JObject json = JObject.Parse(await response.Content.ReadAsStringAsync());
+        List<Proxy>? deserializepProxies = JsonConvert.DeserializeObject<List<Proxy>>(json["results"]!.ToString());
+
+        if (deserializepProxies != null)
+        {
+            proxies.AddRange(deserializepProxies);
+        }
+
+        return proxies;
     }
 }
