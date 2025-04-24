@@ -14,7 +14,9 @@ services.AddOpenApi();
 
 services.AddApplication();
 services.AddInfrastructure(configuration);
+
 services.AddHostedService<ProxyRefreshService>();
+services.AddHostedService<ChromiumInitializerService>();
 
 services.AddParsers();
 

@@ -3,10 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using ShopRadar.Application.Abstractions.Loaders;
 using ShopRadar.Domain.Products;
 using ShopRadar.Domain.Сategories;
 using ShopRadar.Infrastructure.Helpers;
-using ShopRadar.Infrastructure.PageFetchers;
+using ShopRadar.Infrastructure.Loaders;
 using ShopRadar.Infrastructure.Proxy;
 using ShopRadar.Infrastructure.Repositories;
 
@@ -18,24 +19,11 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddHttpClient("TestClient", client => { client.Timeout = TimeSpan.FromSeconds(30); })
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                var cookieContainer = new CookieContainer();
-                cookieContainer.Add(new Uri("https://ee.ge/"), new Cookie("lang", "en"));
-
-                return new HttpClientHandler
-                {
-                    UseCookies = true,
-                    CookieContainer = cookieContainer
-                };
-            });
-
-        services.AddScoped<IPageFetcher, HttpPageFetcher>();
-
         AddPersistence(services, configuration);
 
         AddProxy(services, configuration);
+
+        AddLoaders(services);
 
         return services;
     }
@@ -64,6 +52,26 @@ public static class DependencyInjection
 
             client.BaseAddress = new Uri(proxySettings.BaseUrl);
             client.DefaultRequestHeaders.Add("Authorization", proxySettings.ApiKey);
+            client.Timeout = TimeSpan.FromSeconds(proxySettings.Timeout);
         });
+    }
+
+    private static void AddLoaders(IServiceCollection services)
+    {
+        services.AddSingleton<IBrowserPageLoader, PuppeteerPageLoader>();
+        services.AddSingleton<IStaticPageLoader, HttpStaticPageLoader>();
+
+        services.AddHttpClient(HttpClientNames.PageLoader, client => { client.Timeout = TimeSpan.FromSeconds(10); })
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                var cookieContainer = new CookieContainer();
+                cookieContainer.Add(new Uri("https://ee.ge/"), new Cookie("lang", "en"));
+
+                return new HttpClientHandler
+                {
+                    UseCookies = true,
+                    CookieContainer = cookieContainer
+                };
+            });
     }
 }
