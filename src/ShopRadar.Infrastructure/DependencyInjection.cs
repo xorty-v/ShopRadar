@@ -4,8 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using ShopRadar.Application.Abstractions.Loaders;
+using ShopRadar.Domain.Offers;
 using ShopRadar.Domain.Products;
-using ShopRadar.Domain.Сategories;
 using ShopRadar.Infrastructure.Helpers;
 using ShopRadar.Infrastructure.Loaders;
 using ShopRadar.Infrastructure.Proxy;
@@ -37,7 +37,7 @@ public static class DependencyInjection
 
         services.AddScoped<IProductRepository, ProductRepository>();
 
-        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IOfferRepository, OfferRepository>();
     }
 
     private static void AddProxy(IServiceCollection services, IConfiguration configuration)
