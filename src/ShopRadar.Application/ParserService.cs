@@ -1,40 +1,31 @@
 using ShopRadar.Application.Abstractions;
-using ShopRadar.Domain.Products;
-using ShopRadar.Domain.Сategories;
-using ShopRadar.Parsers;
-using ShopRadar.Parsers.Abstractions;
+using ShopRadar.Application.Abstractions.Parsers;
+using ShopRadar.Domain.Offers;
 
 namespace ShopRadar.Application;
 
 internal sealed class ParserService : IParserService
 {
-    private readonly ICategoryRepository _categoryRepository;
+    private readonly IOfferRepository _offerRepository;
     private readonly IParserFactory _parserFactory;
-    private readonly IProductRepository _productRepository;
 
-    public ParserService(
-        IParserFactory parserFactory,
-        ICategoryRepository categoryRepository,
-        IProductRepository productRepository)
+    public ParserService(IParserFactory parserFactory, IOfferRepository offerRepository)
     {
         _parserFactory = parserFactory;
-        _categoryRepository = categoryRepository;
-        _productRepository = productRepository;
+        _offerRepository = offerRepository;
     }
 
-    public async Task RunAllParser()
+    public async Task RunAllParsers()
     {
-        var shops = Enum.GetValues(typeof(StoreType)).Cast<StoreType>().ToList();
+        var shops = Enum.GetValues<StoreType>().ToList();
 
         var tasks = shops.Select(async shop =>
         {
             var parser = _parserFactory.CreateParser(shop);
 
-            var categories = await parser.ParseCategoriesAsync();
-            // await _categoryService.SaveCategoriesAsync(categories);
+            var offers = await parser.ParseAsync();
 
-            var products = await parser.ParseProductsAsync(categories);
-            // await _productService.SaveProductsAsync(products);
+            await _offerRepository.AddOffersAsync(offers.ToList());
         });
 
         await Task.WhenAll(tasks);

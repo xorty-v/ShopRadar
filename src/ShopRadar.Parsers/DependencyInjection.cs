@@ -1,6 +1,6 @@
 using AngleSharp;
 using Microsoft.Extensions.DependencyInjection;
-using ShopRadar.Parsers.Abstractions;
+using ShopRadar.Application.Abstractions.Parsers;
 using ShopRadar.Parsers.EliteElectronic;
 using ShopRadar.Parsers.Zoommer;
 
@@ -16,10 +16,10 @@ public static class DependencyInjection
             return BrowsingContext.New(config);
         });
 
-        services.AddScoped<IParser, EliteElectronicParser>();
-        services.AddScoped<IParser, ZoommerParser>();
+        services.AddScoped<EliteElectronicParser>();
+        services.AddScoped<ZoommerParser>();
 
-        services.AddSingleton<IParserFactory, ParserFactory>();
+        services.AddTransient<IParserFactory, ParserFactory>();
 
         return services;
     }

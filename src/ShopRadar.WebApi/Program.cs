@@ -1,9 +1,8 @@
 using Scalar.AspNetCore;
 using ShopRadar.Application;
-using ShopRadar.Domain.Products;
+using ShopRadar.Application.Abstractions;
 using ShopRadar.Infrastructure;
 using ShopRadar.Parsers;
-using ShopRadar.Parsers.Abstractions;
 using ShopRadar.WebApi.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,11 +13,10 @@ services.AddOpenApi();
 
 services.AddApplication();
 services.AddInfrastructure(configuration);
+services.AddParsers();
 
 services.AddHostedService<ProxyRefreshService>();
 services.AddHostedService<ChromiumInitializerService>();
-
-services.AddParsers();
 
 var app = builder.Build();
 
@@ -28,16 +26,11 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.MapGet("/test", async () => { return "Done!"; })
-    .WithName("test");
-
-app.MapGet("/parse", async (IParser parser, IProductRepository productRepository) =>
+app.MapGet("/parse", async (IParserService parserService) =>
     {
         var startTime = DateTime.Now;
 
-        var categories = await parser.ParseCategoriesAsync();
-        var products = await parser.ParseProductsAsync(categories.Take(5).ToList());
-        await productRepository.AddProductsAsync(products, CancellationToken.None);
+        await parserService.RunAllParsers();
 
         var totalTime = DateTime.Now - startTime;
 

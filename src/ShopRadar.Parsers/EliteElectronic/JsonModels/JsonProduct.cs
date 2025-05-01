@@ -13,4 +13,11 @@ public class JsonProduct
     [JsonPropertyName("sale_price")]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal SalePrice { get; set; }
+
+    [JsonPropertyName("product_slug")] public string ProductSlug { get; set; }
+
+    [JsonPropertyName("category_slug")] public string Category { get; set; }
+
+    [JsonPropertyName("parent_category_slug")]
+    public string ParentCategory { get; set; }
 }

@@ -1,107 +1,121 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using ShopRadar.Domain.Products;
-using ShopRadar.Domain.Сategories;
-using ShopRadar.Infrastructure.PageFetchers;
+using ShopRadar.Application.Abstractions.Loaders;
+using ShopRadar.Application.Abstractions.Parsers;
+using ShopRadar.Domain;
+using ShopRadar.Domain.Offers;
+using ShopRadar.Domain.PriceHistories;
+using ShopRadar.Domain.Shared;
 using ShopRadar.Parsers.Abstractions;
 using ShopRadar.Parsers.Zoommer.JsonModels;
 
 namespace ShopRadar.Parsers.Zoommer;
 
-public class ZoommerParser : IParser
+public class ZoommerParser : BaseParser, IParser
 {
-    private readonly IPageFetcher _pageFetcher;
+    private readonly IStaticPageLoader _staticPageLoader;
 
-    public ZoommerParser(IPageFetcher pageFetcher)
+    public ZoommerParser(IStaticPageLoader staticPageLoader)
     {
-        _pageFetcher = pageFetcher;
+        _staticPageLoader = staticPageLoader;
     }
 
-    public async Task<List<Category>> ParseCategoriesAsync()
+    protected override string CategoryUrl { get; } = "https://api.zoommer.ge/v1/Categories/all-categories";
+    protected override string ProductUrl { get; } = "https://api.zoommer.ge/v1/Products/v3?CategoryId=";
+
+    public async Task<List<Offer>> ParseAsync()
     {
-        var request = new FetchRequest(ZoommerSettings.CategoryUrl, HttpMethod.Get);
-        var page = await _pageFetcher.FetchPagesAsync(new List<FetchRequest> { request });
-        var response = JsonSerializer.Deserialize<List<JsonCategory>>(page[0]);
+        var categories = await ParseCategoriesAsync();
+        var offers = await ParseOffersAsync(categories);
 
-        var categories = new List<Category>();
-        foreach (var category in response)
-        {
-            categories.Add(new Category { Name = category.Name, Url = category.Url });
-        }
-
-        return categories;
+        return offers;
     }
 
-    public async Task<List<Product>> ParseProductsAsync(List<Category> categories)
+    public override async Task<List<CategoryRaw>> ParseCategoriesAsync()
     {
-        var products = new List<Product>();
+        var page = await _staticPageLoader.LoadPageAsync(CategoryUrl, HttpMethod.Get, null);
+        var response = JsonSerializer.Deserialize<List<JsonCategory>>(page);
 
-        var fetchRequests = new List<FetchRequest>();
-        foreach (var category in categories)
+        var categories = response?.Select(category => new CategoryRaw
         {
-            string categoryId = Regex.Match(category.Url, @"\d+$").Value;
+            Name = category.Name,
+            Url = category.Url
+        }).ToList();
+        List<CategoryRaw> test = new List<CategoryRaw>();
+        test.Add(categories.FirstOrDefault());
+        return test;
+    }
 
-            fetchRequests.Add(new FetchRequest(
-                $"{ZoommerSettings.ProductUrl}{categoryId}&Page=1&Limit=28",
-                HttpMethod.Get)
-            );
-        }
+    public override async Task<List<Offer>> ParseOffersAsync(List<CategoryRaw> categories)
+    {
+        var offers = new List<Offer>();
+        var categoryUrls = categories.Select(c => Regex.Match(c.Url, @"\d+$").Value).ToList();
 
-        var initialPages = await _pageFetcher.FetchPagesAsync(fetchRequests);
-        var additionalRequests = new List<FetchRequest>();
+        var initialRequests = categoryUrls
+            .Select(partUrl => ($"{ProductUrl}{partUrl}&Page=1&Limit=28", (HttpContent?)null))
+            .ToList();
 
-        for (int i = 0; i < categories.Count; i++)
+        var initialPages = await _staticPageLoader.LoadPagesAsync(initialRequests, HttpMethod.Get);
+        var additionalRequests = new List<(string url, HttpContent? content)>();
+
+        for (int i = 0; i < initialPages.Count; i++)
         {
-            var response = JsonSerializer.Deserialize<JsonProductList>(initialPages[i]);
+            var pageContent = initialPages[i];
+            if (string.IsNullOrWhiteSpace(pageContent)) continue;
 
-            if (response == null)
-            {
-                continue;
-            }
+            var response = JsonSerializer.Deserialize<JsonProductList>(pageContent);
+            if (response?.Products == null) continue;
 
-            products.AddRange(MapProducts(response.Products!));
+            offers.AddRange(MapOffers(response.Products));
 
             int totalPages = (int)Math.Ceiling(response.TotalCount / 28.0);
             if (totalPages <= 1) continue;
 
-            string categoryId = Regex.Match(categories[i].Url, @"\d+$").Value;
             for (int page = 2; page <= totalPages; page++)
             {
-                additionalRequests.Add(new FetchRequest(
-                    $"{ZoommerSettings.ProductUrl}{categoryId}&Page={page}&Limit=28",
-                    HttpMethod.Get)
-                );
+                additionalRequests.Add((
+                    $"{ProductUrl}{categoryUrls[i]}&Page={page}&Limit=28",
+                    null
+                ));
             }
         }
 
-        var remainingPages = await _pageFetcher.FetchPagesAsync(additionalRequests);
-        foreach (var page in remainingPages)
+        if (additionalRequests.Count > 0)
         {
-            var response = JsonSerializer.Deserialize<JsonProductList>(page);
-
-            if (response != null)
+            var additionalPages = await _staticPageLoader.LoadPagesAsync(additionalRequests, HttpMethod.Get);
+            foreach (var page in additionalPages)
             {
-                products.AddRange(MapProducts(response.Products!));
+                if (string.IsNullOrWhiteSpace(page)) continue;
+
+                var response = JsonSerializer.Deserialize<JsonProductList>(page);
+                if (response?.Products != null)
+                {
+                    offers.AddRange(MapOffers(response.Products));
+                }
             }
         }
 
-        return products;
+        return offers;
     }
 
-    private List<Product> MapProducts(List<JsonProduct> jsonProducts) =>
-        jsonProducts.Select(jsonProduct =>
+    private IEnumerable<Offer> MapOffers(List<JsonProduct> jsonProducts)
+    {
+        foreach (var jsonProduct in jsonProducts)
         {
             var hasDiscount = jsonProduct.PreviousPrice.HasValue &&
                               jsonProduct.PreviousPrice.Value > jsonProduct.ActualPrice;
 
-            return new Product
-            {
-                Id = Guid.NewGuid(),
-                CategoryId = Guid.Parse("d64cdc03-3b7d-4bdc-af20-c7e8a4978f9b"),
-                Name = jsonProduct.Name,
-                Price = hasDiscount ? jsonProduct.PreviousPrice.Value : jsonProduct.ActualPrice,
-                DiscountPrice = hasDiscount ? jsonProduct.ActualPrice : null,
-                Url = "test2.com"
-            };
-        }).ToList();
+            var offerResult = Offer.Create(
+                null,
+                Constants.PredefinedIds.Stores.Zoommer,
+                Name.Create(jsonProduct.Name).Value,
+                Url.Create("https://zoommer.ge/en/" + jsonProduct.Route).Value,
+                Money.Create(hasDiscount ? jsonProduct.PreviousPrice.Value : jsonProduct.ActualPrice),
+                hasDiscount ? Money.Create(jsonProduct.ActualPrice) : Money.Zero(),
+                DateTime.UtcNow
+            );
+
+            yield return offerResult.Value;
+        }
+    }
 }

@@ -2,5 +2,5 @@ namespace ShopRadar.Application.Abstractions;
 
 public interface IParserService
 {
-    public Task RunAllParser();
+    public Task RunAllParsers();
 }

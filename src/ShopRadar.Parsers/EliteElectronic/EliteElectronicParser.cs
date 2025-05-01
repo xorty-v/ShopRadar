@@ -1,134 +1,129 @@
 using System.Text.Json;
 using AngleSharp;
-using ShopRadar.Domain.Сategories;
-using ShopRadar.Infrastructure.PageFetchers;
+using ShopRadar.Application.Abstractions.Loaders;
+using ShopRadar.Application.Abstractions.Parsers;
+using ShopRadar.Domain.Offers;
+using ShopRadar.Domain.PriceHistories;
 using ShopRadar.Parsers.Abstractions;
 using ShopRadar.Parsers.EliteElectronic.JsonModels;
-using Product = ShopRadar.Domain.Products.Product;
+using ShopRadar.Parsers.EliteElectronic.Requests;
+using Constants = ShopRadar.Domain.Constants;
+using Url = ShopRadar.Domain.Shared.Url;
 
 namespace ShopRadar.Parsers.EliteElectronic;
 
-public class EliteElectronicParser : IParser
+public class EliteElectronicParser : BaseParser, IParser
 {
     private readonly IBrowsingContext _browsingContext;
-    private readonly IPageFetcher _pageFetcher;
+    private readonly IStaticPageLoader _staticPageLoader;
 
-    public EliteElectronicParser(IPageFetcher pageFetcher, IBrowsingContext browsingContext)
+    public EliteElectronicParser(IStaticPageLoader staticPageLoader, IBrowsingContext browsingContext)
     {
-        _pageFetcher = pageFetcher;
+        _staticPageLoader = staticPageLoader;
         _browsingContext = browsingContext;
     }
 
-    public async Task<List<Category>> ParseCategoriesAsync()
+    protected override string CategoryUrl { get; } = "https://ee.ge/";
+    protected override string ProductUrl { get; } = "https://api.ee.ge/product/filter_products";
+
+    public async Task<List<Offer>> ParseAsync()
     {
-        var request = new FetchRequest(EliteElectronicSettings.BaseUrl, HttpMethod.Get);
-        var page = await _pageFetcher.FetchPagesAsync(new List<FetchRequest> { request });
-        var document = await _browsingContext.OpenAsync(req => req.Content(page[0]));
+        var categories = await ParseCategoriesAsync();
+        var offers = await ParseOffersAsync(categories);
 
-        var сategories = document
-            .QuerySelectorAll("div.dropdown-content a")
-            .Select(a => new Category
-            {
-                Id = Guid.NewGuid(),
-                Name = a.TextContent.Trim(),
-                Url = a.GetAttribute("href")!
-            })
-            .Where(c => !c.Url.Contains("/furniture/", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        return сategories;
+        return offers;
     }
 
-    public async Task<List<Product>> ParseProductsAsync(List<Category> categories)
+    public override async Task<List<CategoryRaw>> ParseCategoriesAsync()
     {
-        var products = new List<Product>();
-        var fetchRequests = new List<FetchRequest>();
+        var pageContent = await _staticPageLoader.LoadPageAsync(CategoryUrl, HttpMethod.Get, null);
+        var document = await _browsingContext.OpenAsync(req => req.Content(pageContent));
 
-        foreach (var category in categories)
+        var categories = document
+            .QuerySelectorAll("div.dropdown-content a")
+            .Select(a => new CategoryRaw
+            {
+                Name = a.TextContent.Trim(),
+                Url = a.GetAttribute("href")
+            }).ToList();
+
+        if (categories == null)
         {
-            string categoryId = category.Url.Split('/').Last();
-
-            fetchRequests.Add(new FetchRequest(
-                EliteElectronicSettings.ApiUrl,
-                HttpMethod.Post,
-                CreateRequestBody(categoryId)
-            ));
+            throw new InvalidOperationException("No valid category found");
         }
 
-        var initialPages = await _pageFetcher.FetchPagesAsync(fetchRequests);
-        var additionalRequests = new List<FetchRequest>();
+        List<CategoryRaw> test = new List<CategoryRaw>();
+        test.Add(categories.FirstOrDefault());
+        return test;
+    }
 
-        for (int i = 0; i < categories.Count; i++)
+    public override async Task<List<Offer>> ParseOffersAsync(List<CategoryRaw> categories)
+    {
+        var offers = new List<Offer>();
+        var categoryUrls = categories.Select(c => c.Url.Split('/').Last()).ToList();
+
+        var initialRequests = categoryUrls
+            .Select(url => (ProductUrl, PostRequestBody.Create(url)))
+            .ToList();
+
+        var initialPages = await _staticPageLoader.LoadPagesAsync(initialRequests, HttpMethod.Post);
+        var additionalRequests = new List<(string url, HttpContent content)>();
+
+        for (int i = 0; i < initialPages.Count; i++)
         {
-            var response = JsonSerializer.Deserialize<JsonProductList>(initialPages[i]);
+            var pageContent = initialPages[i];
+            if (string.IsNullOrWhiteSpace(pageContent)) continue;
 
-            if (response == null)
-            {
-                continue;
-            }
+            var response = JsonSerializer.Deserialize<JsonProductList>(pageContent);
+            if (response?.Products == null) continue;
 
-            products.AddRange(MapProducts(response.Products!));
+            offers.AddRange(MapOffers(response.Products));
 
             int totalPages = (int)Math.Ceiling(response.TotalCount / 10.0);
             if (totalPages <= 1) continue;
 
-            string categoryId = categories[i].Url.Split('/').Last();
             for (int page = 2; page <= totalPages; page++)
             {
-                additionalRequests.Add(new FetchRequest(
-                    EliteElectronicSettings.ApiUrl,
-                    HttpMethod.Post,
-                    CreateRequestBody(categoryId, page)
-                ));
+                additionalRequests.Add((ProductUrl, PostRequestBody.Create(categoryUrls[i], page)));
             }
         }
 
-        var remainingPages = await _pageFetcher.FetchPagesAsync(additionalRequests);
-        foreach (var page in remainingPages)
+        if (additionalRequests.Count > 0)
         {
-            var response = JsonSerializer.Deserialize<JsonProductList>(page);
+            var additionalPages = await _staticPageLoader.LoadPagesAsync(additionalRequests, HttpMethod.Post);
 
-            if (response != null)
+            foreach (var page in additionalPages)
             {
-                products.AddRange(MapProducts(response.Products!));
+                if (string.IsNullOrWhiteSpace(page)) continue;
+
+                var response = JsonSerializer.Deserialize<JsonProductList>(page);
+                if (response?.Products != null)
+                {
+                    offers.AddRange(MapOffers(response.Products));
+                }
             }
         }
 
-        return products;
+        return offers;
     }
 
-    private static object CreateRequestBody(string category, int page = 1, int itemsPerPage = 10)
+    private IEnumerable<Offer> MapOffers(List<JsonProduct> jsonProducts)
     {
-        var requestBody = new
+        foreach (var jsonProduct in jsonProducts)
         {
-            min_price = 0,
-            max_price = 0,
-            category = category,
-            brand = new string[] { },
-            color = new string[] { },
-            room = new string[] { },
-            sort_by = "",
-            item_per_page = itemsPerPage,
-            page_no = page,
-            specification = new string[] { },
-            sale_products = 0,
-            search_text = "",
-            slug = "",
-            pageno = (int?)null
-        };
+            var offerResult = Offer.Create(
+                null,
+                Constants.PredefinedIds.Stores.EliteElectronic,
+                Name.Create(jsonProduct.Name).Value,
+                Url.Create(
+                        $"https://ee.ge/{jsonProduct.ParentCategory}/{jsonProduct.Category}/{jsonProduct.ProductSlug}")
+                    .Value,
+                Money.Create(jsonProduct.ActualPrice),
+                Money.Create(jsonProduct.SalePrice),
+                DateTime.UtcNow
+            );
 
-        return requestBody;
+            yield return offerResult.Value;
+        }
     }
-
-    private List<Product> MapProducts(List<JsonProduct> jsonProducts) =>
-        jsonProducts.Select(jsonProduct =>
-            new Product
-            {
-                Id = Guid.NewGuid(),
-                CategoryId = Guid.Parse("d64cdc03-3b7d-4bdc-af20-c7e8a4978f9b"),
-                Name = jsonProduct.Name,
-                Price = jsonProduct.ActualPrice,
-                DiscountPrice = jsonProduct.SalePrice,
-                Url = "test.com"
-            }).ToList();
 }

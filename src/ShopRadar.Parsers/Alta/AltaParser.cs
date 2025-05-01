@@ -1,17 +1,25 @@
-using ShopRadar.Domain.Products;
-using ShopRadar.Domain.Сategories;
+using ShopRadar.Application.Abstractions.Parsers;
+using ShopRadar.Domain.Offers;
 using ShopRadar.Parsers.Abstractions;
 
 namespace ShopRadar.Parsers.Alta;
 
-public class AltaParser : IParser
+public class AltaParser : BaseParser, IParser
 {
-    public Task<List<Category>> ParseCategoriesAsync()
+    protected override string CategoryUrl { get; }
+    protected override string ProductUrl { get; }
+
+    public Task<List<Offer>> ParseAsync()
     {
         throw new NotImplementedException();
     }
 
-    public Task<List<Product>> ParseProductsAsync(List<Category> categories)
+    public override Task<List<CategoryRaw>> ParseCategoriesAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task<List<Offer>> ParseOffersAsync(List<CategoryRaw> categories)
     {
         throw new NotImplementedException();
     }

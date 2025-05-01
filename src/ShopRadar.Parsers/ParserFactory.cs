@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using ShopRadar.Parsers.Abstractions;
+using ShopRadar.Application.Abstractions.Parsers;
 using ShopRadar.Parsers.EliteElectronic;
 using ShopRadar.Parsers.Zoommer;
 

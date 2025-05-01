@@ -9,4 +9,9 @@ public class JsonProduct
     [JsonPropertyName("price")] public decimal ActualPrice { get; set; }
 
     [JsonPropertyName("previousPrice")] public decimal? PreviousPrice { get; set; }
+
+    [JsonPropertyName("route")] public string Route { get; set; }
+
+    [JsonPropertyName("parentCategoryName")]
+    public string ParentCategory { get; set; }
 }
