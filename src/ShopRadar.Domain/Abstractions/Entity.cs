@@ -1,15 +1,15 @@
 namespace ShopRadar.Domain.Abstractions;
 
-public abstract class Entity
+public abstract class Entity<TId> where TId : class
 {
-    protected Entity(Guid id)
+    protected Entity(TId id)
     {
-        Id = id;
+        Id = id ?? throw new Exception("Id can't be null");
     }
 
     protected Entity()
     {
     }
 
-    public Guid Id { get; init; }
+    public TId Id { get; init; }
 }

@@ -1,15 +1,25 @@
+using ShopRadar.Domain.Abstractions;
 using ShopRadar.Domain.Products;
-using ShopRadar.Domain.Stores;
 
 namespace ShopRadar.Domain.Сategories;
 
-public sealed class Category
+public sealed class Category : Entity<CategoryId>
 {
-    public Guid Id { get; set; }
-    public Guid StoreId { get; set; }
-    public string Name { get; set; }
-    public string Url { get; set; }
+    private readonly List<Product> _products = [];
 
-    public Store Store { get; set; }
-    public ICollection<Product> Products { get; set; }
+    private Category()
+    {
+    }
+
+    private Category(CategoryId id, string name) : base(id)
+    {
+        Name = name;
+    }
+
+    public string Name { get; private set; }
+    public IReadOnlyList<Product> Products => _products;
+
+    public static Category Create(CategoryId id, string name) => new(id, name);
+
+    public void AddProduct(Product product) => _products.Add(product);
 }
