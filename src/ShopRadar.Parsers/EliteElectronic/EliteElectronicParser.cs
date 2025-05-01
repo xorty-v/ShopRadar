@@ -52,9 +52,7 @@ public class EliteElectronicParser : BaseParser, IParser
             throw new InvalidOperationException("No valid category found");
         }
 
-        List<CategoryRaw> test = new List<CategoryRaw>();
-        test.Add(categories.FirstOrDefault());
-        return test;
+        return categories;
     }
 
     public override async Task<List<Offer>> ParseOffersAsync(List<CategoryRaw> categories)
