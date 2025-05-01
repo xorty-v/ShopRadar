@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ShopRadar.Domain;
 using ShopRadar.Domain.Сategories;
 
 namespace ShopRadar.Infrastructure.Configurations;
@@ -10,21 +11,24 @@ internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
     {
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.Name).IsRequired().HasMaxLength(100);
+        builder.Property(c => c.Id)
+            .HasConversion(id => id.Value, value => CategoryId.Create(value))
+            .IsRequired();
 
-        builder.Property(c => c.Url).IsRequired().HasMaxLength(100);
+        builder.Property(c => c.Name)
+            .IsRequired();
 
         builder.HasMany(c => c.Products)
-            .WithOne(p => p.Category)
-            .HasForeignKey(p => p.CategoryId);
+            .WithOne()
+            .HasForeignKey(p => p.CategoryId)
+            .IsRequired();
 
-        builder.HasData(new Category
-            {
-                Id = Guid.NewGuid(),
-                StoreId = Guid.Parse("bf167e4c-799a-4bdd-aa41-75ebabe9089b"),
-                Name = "Test Category",
-                Url = "TEST"
-            }
+        builder.HasData(
+            Category.Create(Constants.PredefinedIds.Categories.Laptops, "Laptops"),
+            Category.Create(Constants.PredefinedIds.Categories.Smartphones, "Smartphones"),
+            Category.Create(Constants.PredefinedIds.Categories.Monitors, "Monitors"),
+            Category.Create(Constants.PredefinedIds.Categories.Headphones, "Headphones"),
+            Category.Create(Constants.PredefinedIds.Categories.Keyboards, "Keyboards")
         );
     }
 }

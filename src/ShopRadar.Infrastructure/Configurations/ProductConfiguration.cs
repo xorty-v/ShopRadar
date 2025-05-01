@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ShopRadar.Domain.Products;
+using ShopRadar.Domain.Сategories;
 
 namespace ShopRadar.Infrastructure.Configurations;
 
@@ -10,12 +11,24 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     {
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.Name).IsRequired().HasMaxLength(200);
+        builder.Property(p => p.Id)
+            .HasConversion(id => id.Value, value => ProductId.Create(value))
+            .IsRequired();
 
-        builder.Property(p => p.Price).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.CategoryId)
+            .HasConversion(id => id.Value, value => CategoryId.Create(value))
+            .IsRequired();
 
-        builder.Property(p => p.DiscountPrice).HasColumnType("decimal(18,2)");
+        builder.OwnsOne(p => p.Name, name =>
+        {
+            name.Property(n => n.Value)
+                .HasColumnName("Name")
+                .IsRequired();
+        });
 
-        builder.Property(p => p.Url).IsRequired().HasMaxLength(350);
+        builder.HasMany(p => p.Offers)
+            .WithOne()
+            .HasForeignKey(o => o.ProductId)
+            .IsRequired(false);
     }
 }
